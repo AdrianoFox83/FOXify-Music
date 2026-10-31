@@ -1,0 +1,44 @@
+[
+  {
+    "arquivo": "noite-azul.wav",
+    "titulo": "Noite Azul",
+    "artista": "Foxify Sessions",
+    "duracao": 33.33,
+    "bytes": 1470044
+  },
+  {
+    "arquivo": "chuva-de-neon.wav",
+    "titulo": "Chuva de Neon",
+    "artista": "Foxify Sessions",
+    "duracao": 33.6,
+    "bytes": 1481804
+  },
+  {
+    "arquivo": "vento-solar.wav",
+    "titulo": "Vento Solar",
+    "artista": "Foxify Sessions",
+    "duracao": 33.91,
+    "bytes": 1495608
+  },
+  {
+    "arquivo": "madrugada-lofi.wav",
+    "titulo": "Madrugada Lo-fi",
+    "artista": "Foxify Sessions",
+    "duracao": 35.29,
+    "bytes": 1556514
+  },
+  {
+    "arquivo": "pulso-eletrico.wav",
+    "titulo": "Pulso ElÃ©trico",
+    "artista": "Foxify Sessions",
+    "duracao": 33.44,
+    "bytes": 1474862
+  },
+  {
+    "arquivo": "ceu-de-outubro.wav",
+    "titulo": "CÃ©u de Outubro",
+    "artista": "Foxify Sessions",
+    "duracao": 32.0,
+    "bytes": 1411244
+  }
+]

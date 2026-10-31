@@ -1,0 +1,17 @@
+# Arquivos que não precisam ir para a imagem/servidor
+.git
+.github
+__pycache__
+*.pyc
+_vendor
+_cache_yt
+_pesquisa
+_teste
+node_modules
+*.zip
+FOXify.zip
+docs
+README.md
+COMECE-AQUI.txt
+FOXify-celular.bat
+ferramentas

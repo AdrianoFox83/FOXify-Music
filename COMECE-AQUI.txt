@@ -1,0 +1,31 @@
+FOXify — sua música livre
+=========================
+
+ABRIR NO COMPUTADOR
+  Duplo clique em: FOXify.bat
+
+ABRIR NO CELULAR ANDROID (mesma rede Wi-Fi)
+  1. Duplo clique em: FOXify-celular.bat
+  2. Leia o endereço "No celular (Wi-Fi)" na janela preta.
+     Exemplo: http://192.168.0.15:8765/
+  3. Digite esse endereço no Chrome do Android.
+  4. Para instalar como app (tela cheia e offline), publique a pasta
+     em um endereço HTTPS — instruções no README.md, seção
+     "Instalar como aplicativo no Android".
+
+O QUE TEM
+  - Interface inspirada no mockup (desktop e celular).
+  - Sua Música no lugar de "Descobertas da Semana": busca em
+    Audius, Internet Archive, Jamendo Music, YouTube, Bandcamp
+    e HearThis.at — e toca no player do app.
+  - YouTube toca só o áudio, sem vídeo.
+  - Fila, favoritas, playlists, histórico, tema, segundo plano.
+  - Modo offline com 6 faixas demo locais.
+
+IMPORTANTE
+  YouTube, Bandcamp, HearThis.at e Jamendo Music usam o servidor
+  local (FOXify.bat) para buscar. Audius e Internet Archive
+  funcionam direto.
+
+DÚVIDAS
+  Abra o README.md.
