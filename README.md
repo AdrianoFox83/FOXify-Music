@@ -9,6 +9,11 @@ computador, com o layout completo de três colunas.
 
 ![Início no desktop](docs/capturas/desktop-inicio.png)
 
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/AdrianoFox83/FOXify-Music)
+
+**Repositório pronto:** https://github.com/AdrianoFox83/FOXify-Music — o botão acima
+cria o servidor na nuvem; depois é só gerar o APK com a URL do Render.
+
 ---
 
 ## Novidades da versão 1.6.3
