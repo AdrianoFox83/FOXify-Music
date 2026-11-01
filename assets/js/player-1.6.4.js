@@ -156,7 +156,13 @@
       if (meuToken !== token || motor !== "youtube") return;
       let s = -1;
       try { s = yt ? yt.getPlayerState() : -1; } catch (_) {}
-      if (s !== 1 && carregando) falhar(new Error("O YouTube não iniciou o vídeo"), meuToken);
+      if (s !== 1 && carregando) {
+        // No APK/nuvem o navegador pode bloquear o autoplay do iframe.
+        // Mantém a faixa no player e pede um toque, em vez de pular para a demo.
+        carregando = false;
+        erro = "toque";
+        emitir();
+      }
     }, 12000);
   }
 
