@@ -1,14 +1,14 @@
 /* FOXify — service worker (app shell offline + faixas demo em cache). */
-const VERSAO = "foxify-v1.7.4";
+const VERSAO = "foxify-v1.7.5";
 const ESSENCIAIS = [
   "./",
   "./index.html",
   "./manifest.webmanifest",
-  "./assets/css/estilos-1.6.0.css",
-  "./assets/js/dados-1.6.4.js",
-  "./assets/js/fontes-1.6.4.js",
-  "./assets/js/player-1.6.4.js",
-  "./assets/js/app-1.6.4.js",
+  "./assets/css/estilos-1.6.5.css",
+  "./assets/js/dados-1.6.5.js",
+  "./assets/js/fontes-1.6.5.js",
+  "./assets/js/player-1.6.5.js",
+  "./assets/js/app-1.6.5.js",
   "./assets/img/avatar.jpg",
   "./assets/audio/silencio.wav",
   "./assets/img/icones/favicon.png",

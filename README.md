@@ -16,6 +16,14 @@ cria o servidor na nuvem; depois é só gerar o APK com a URL do Render.
 
 ---
 
+## Novidades da versão 1.6.5
+
+- **Busca por voz:** botão de microfone nas barras de busca. Fale o nome da música,
+  artista ou estilo; o app preenche a busca e consulta as três fontes.
+- Usa a API de voz do navegador (`SpeechRecognition`, pt-BR). No Chrome Android ou no
+  APK/TWA ele pede permissão de microfone; se o navegador não suportar, mostra um aviso.
+- Nenhum áudio é gravado pelo FOXify: o reconhecimento é feito pelo navegador.
+
 ## Novidades da versão 1.6.4
 
 - **Render/nuvem:** quando o IP do servidor é bloqueado pelo YouTube, o app usa o
@@ -309,11 +317,11 @@ FOXify/
 ├─ FOXify.bat                 # abre no PC em janela de app
 ├─ FOXify-celular.bat         # mostra o endereço para o Android
 ├─ assets/
-│  ├─ css/estilos-1.6.0.css
-│  ├─ js/dados-1.6.4.js       # estações, playlists, fontes e faixas demo
-│  ├─ js/fontes-1.6.4.js      # YouTube, Deezer, iTunes + curadoria das estações
-│  ├─ js/player-1.6.4.js      # áudio + YouTube (só som), fila, Media Session, watchdog
-│  ├─ js/app-1.6.4.js         # rotas, telas, biblioteca, busca e ajustes
+│  ├─ css/estilos-1.6.5.css
+│  ├─ js/dados-1.6.5.js       # estações, playlists, fontes e faixas demo
+│  ├─ js/fontes-1.6.5.js      # YouTube, Deezer, iTunes + curadoria das estações
+│  ├─ js/player-1.6.5.js      # áudio + YouTube (só som), fila, Media Session, watchdog
+│  ├─ js/app-1.6.5.js         # busca por voz, rotas, biblioteca e ajustes
 │  ├─ img/capas/              # 23 capas (10 da referência + geradas)
 │  ├─ img/icones/             # ícones do PWA
 │  └─ audio/                  # 6 faixas demo WAV

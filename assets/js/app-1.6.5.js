@@ -6,7 +6,7 @@
   const F = window.FOX_FONTES;
   const P = window.FOXPlayer;
   const CHAVE = "foxify.v1";
-  const VERSAO = "1.6.4";
+  const VERSAO = "1.6.5";
 
   const $ = (sel, raiz = document) => raiz.querySelector(sel);
   const $$ = (sel, raiz = document) => Array.from(raiz.querySelectorAll(sel));
@@ -55,6 +55,8 @@
 
   let estado = JSON.parse(JSON.stringify(modelo));
   let salvarTimer = null;
+  let reconhecimentoVoz = null;
+  let formOuvindo = null;
 
   function carregarEstado() {
     try {
@@ -588,6 +590,7 @@
         ${ico("busca")}
         <input type="search" name="q" id="busca-pagina-input" value="${esc(q)}"
           placeholder="Buscar músicas, artistas, álbuns e playlists..." autocomplete="off" enterkeyhint="search">
+        <button type="button" class="btn-voz" data-acao="busca-voz" aria-label="Buscar por voz" title="Buscar por voz">${ico("microfone")}</button>
         <button type="submit" class="btn btn--primario btn--pequeno">Buscar</button>
       </form>
       ${chipsFontes(buscaEstado.filtro)}
@@ -630,6 +633,7 @@
         ${ico("globo")}
         <input type="search" name="q" id="busca-livre-input" value="${esc(buscaEstado.view === "suamusica" ? buscaEstado.termo : "")}"
           placeholder="Buscar em sites de música grátis..." autocomplete="off" enterkeyhint="search">
+        <button type="button" class="btn-voz" data-acao="busca-voz" aria-label="Buscar por voz" title="Buscar por voz">${ico("microfone")}</button>
         <button type="submit" class="btn btn--primario">${ico("busca")} Buscar</button>
       </form>
       <div class="estado-fontes">
@@ -758,6 +762,86 @@
     alvo.innerHTML = resultadosHtml();
     const btn = $("[data-acao='tocar-resultados']");
     if (btn) btn.style.display = buscaEstado.lista.length ? "" : "none";
+  }
+
+  function limparEstadoVoz(form) {
+    if (!form) return;
+    form.classList.remove("ouvindo");
+    const botao = form.querySelector(".btn-voz");
+    if (botao) botao.classList.remove("ativo");
+    const input = form.querySelector('input[name="q"]');
+    if (input && input.dataset.placeholderOriginal) {
+      input.placeholder = input.dataset.placeholderOriginal;
+      delete input.dataset.placeholderOriginal;
+    }
+    if (formOuvindo === form) formOuvindo = null;
+    reconhecimentoVoz = null;
+  }
+
+  function pararVoz() {
+    const atual = reconhecimentoVoz;
+    const form = formOuvindo;
+    reconhecimentoVoz = null;
+    if (form) limparEstadoVoz(form);
+    if (atual) { try { atual.stop(); } catch (_) {} }
+  }
+
+  function buscarPorVoz(form) {
+    if (!form) return;
+    if (reconhecimentoVoz) { pararVoz(); return; }
+    const Recon = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!Recon) {
+      toast("Busca por voz não é suportada neste navegador. No Android, use o Chrome.", "erro", 4600);
+      return;
+    }
+    const input = form.querySelector('input[name="q"]');
+    const botao = form.querySelector(".btn-voz");
+    const view = form.dataset.form === "busca-livre" ? "suamusica" : "buscar";
+    let recon;
+    try { recon = new Recon(); } catch (_) {
+      toast("Não foi possível iniciar o microfone.", "erro", 3500);
+      return;
+    }
+    reconhecimentoVoz = recon;
+    formOuvindo = form;
+    recon.lang = "pt-BR";
+    recon.interimResults = false;
+    recon.maxAlternatives = 1;
+    recon.continuous = false;
+    form.classList.add("ouvindo");
+    if (botao) botao.classList.add("ativo");
+    if (input) {
+      input.dataset.placeholderOriginal = input.placeholder;
+      input.placeholder = "Ouvindo… fale o nome da música";
+      input.focus();
+    }
+    recon.onresult = (evento) => {
+      const texto = String(evento.results[0][0].transcript || "").trim();
+      limparEstadoVoz(form);
+      if (!texto) { toast("Não ouvi nada. Tente de novo.", "erro", 3000); return; }
+      if (input) input.value = texto;
+      executarBusca(texto, view);
+    };
+    recon.onerror = (evento) => {
+      const motivo = evento.error || "";
+      limparEstadoVoz(form);
+      if (motivo === "not-allowed" || motivo === "service-not-allowed") {
+        toast("Permita o microfone nas permissões do navegador.", "erro", 4200);
+      } else if (motivo === "no-speech") {
+        toast("Não ouvi nada. Tente de novo.", "erro", 3000);
+      } else if (motivo === "audio-capture") {
+        toast("Microfone não encontrado neste aparelho.", "erro", 3500);
+      } else if (motivo === "network") {
+        toast("A busca por voz precisa de internet.", "erro", 3500);
+      } else {
+        toast("Não consegui ouvir. Tente de novo.", "erro", 3500);
+      }
+    };
+    recon.onend = () => limparEstadoVoz(form);
+    try { recon.start(); } catch (_) {
+      limparEstadoVoz(form);
+      toast("Não foi possível iniciar o microfone.", "erro", 3500);
+    }
   }
 
   async function executarBusca(termo, view) {
@@ -1313,6 +1397,7 @@
       } else renderizarResultados();
     },
     "repetir-busca": () => executarBusca(buscaEstado.termo, buscaEstado.view || "buscar"),
+    "busca-voz": (el) => buscarPorVoz(el.closest("form")),
     "limpar-buscas": () => { estado.buscas = []; salvar(); renderizarVista(); toast("Buscas recentes limpas.", "ok", 1800); },
     "limpar-historico": () => { estado.historico = []; salvar(); renderizarVista(); toast("Histórico limpo.", "ok", 1800); },
     "nova-playlist": () => modalNovaPlaylist(),
