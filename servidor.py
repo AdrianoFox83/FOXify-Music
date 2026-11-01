@@ -324,6 +324,54 @@ class Servidor(SimpleHTTPRequestHandler):
             "cliente": cliente,
         }
 
+    def yt_info_invidious(self, vid):
+        """Fallback: instância Invidious devolve áudio já proxiado por ela."""
+        base = "https://yt.chocolatemoo53.com"
+        alvo = base + "/api/v1/videos/" + vid + "?local=true"
+        pedido = urllib.request.Request(alvo, headers={
+            "User-Agent": UA_NAVEGADOR,
+            "Accept": "application/json",
+            "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.8",
+        })
+        with urllib.request.urlopen(pedido, timeout=25) as resposta:
+            dados = json.loads(resposta.read())
+        if not isinstance(dados, dict) or dados.get("error"):
+            raise RuntimeError("Invidious não retornou o vídeo")
+        formatos = [f for f in (dados.get("adaptiveFormats") or [])
+                    if str(f.get("type") or "").startswith("audio/") and f.get("url")]
+        if not formatos:
+            raise RuntimeError("Invidious não liberou áudio")
+
+        def nota(f):
+            mime = str(f.get("type") or "")
+            mp4 = 0 if "mp4" in mime else 1
+            bitrate = -int(f.get("bitrate") or 0)
+            return (mp4, bitrate)
+
+        formatos.sort(key=nota)
+        escolhido = formatos[0]
+        url = str(escolhido["url"])
+        if url.startswith("/"):
+            url = base + url
+        if "local=true" not in url and "local=1" not in url:
+            url += ("&" if "?" in url else "?") + "local=true"
+        try:
+            tamanho = int(escolhido.get("contentLength") or escolhido.get("clen") or 0)
+        except Exception:
+            tamanho = 0
+        return {
+            "videoId": vid,
+            "url": url,
+            "mimeType": escolhido.get("type") or "audio/mp4",
+            "bitrate": escolhido.get("bitrate") or 0,
+            "titulo": dados.get("title") or "",
+            "artista": dados.get("author") or "",
+            "duracao": int(dados.get("lengthSeconds") or 0),
+            "tamanho": tamanho,
+            "cliente": "invidious",
+            "direto": True,
+        }
+
     def youtube_audio(self):
         """Devolve a URL de áudio (sem vídeo) de um vídeo do YouTube."""
         consulta = parse_qs(urlparse(self.path).query)
@@ -350,6 +398,16 @@ class Servidor(SimpleHTTPRequestHandler):
                 return self.json(resposta)
             except Exception as erro:
                 ultimo_erro = erro
+        chave_cache = vid + ":invidious"
+        salvo = YT_AUDIO.get(chave_cache)
+        if salvo and agora - salvo[0] < 15 * 60:
+            return self.json(salvo[1])
+        try:
+            resposta = self.yt_info_invidious(vid)
+            YT_AUDIO[chave_cache] = (agora, resposta)
+            return self.json(resposta)
+        except Exception as erro:
+            ultimo_erro = erro
         return self.json({"erro": "YouTube: " + str(ultimo_erro or "falha")}, 502)
 
     def yt_baixar(self, vid):

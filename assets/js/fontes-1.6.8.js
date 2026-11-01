@@ -1045,7 +1045,9 @@
     if (!r.ok) throw new Error("resolver YouTube HTTP " + r.status);
     const info = await r.json();
     if (!info || !info.url) throw new Error("resolver YouTube sem URL");
-    const url = apiUrl("api/proxy?url=" + encodeURIComponent(info.url));
+    const url = info.direto
+      ? info.url
+      : apiUrl("api/proxy?url=" + encodeURIComponent(info.url));
     if (info.titulo) faixa.titulo = info.titulo;
     if (info.artista) faixa.artista = info.artista;
     if (info.duracao && !faixa.duracao) faixa.duracao = info.duracao;
