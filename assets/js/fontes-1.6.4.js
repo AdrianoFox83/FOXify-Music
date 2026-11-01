@@ -900,6 +900,16 @@
     };
   }
 
+  function naNuvem() {
+    let host = location.hostname;
+    if (config.servidor) {
+      try { host = new URL(config.servidor).hostname; } catch (_) {}
+    }
+    if (!host || host === "localhost" || host === "127.0.0.1" || host === "::1") return false;
+    if (/^10\./.test(host) || /^192\.168\./.test(host) || /^172\.(1[6-9]|2\d|3[01])\./.test(host)) return false;
+    return true;
+  }
+
   async function tentarYoutubeCompleto(faixa) {
     try {
       const consulta = `${faixa.titulo || ""} ${faixa.artista || ""} official`.trim();
@@ -931,7 +941,24 @@
       return { url: faixa.url, duracao: faixa.duracao, engine: "audio" };
     }
     if (faixa.fonte === "deezer" || faixa.fonte === "itunes") {
-      // O catálogo vem do Deezer/iTunes; o áudio completo vem do YouTube.
+      // Na nuvem o IP do servidor pode ser bloqueado pelo YouTube. Nesse caso
+      // o player incorporado roda no aparelho do usuário e toca o áudio completo.
+      if (naNuvem()) {
+        try {
+          const achados = await youtubeBuscar(
+            `${faixa.titulo || ""} ${faixa.artista || ""} official`.trim(), 1);
+          if (achados.length) {
+            faixa.viaYoutube = true;
+            faixa.previa = false;
+            if (achados[0].duracao) faixa.duracao = achados[0].duracao;
+            return {
+              url: null, duracao: faixa.duracao, engine: "youtube",
+              videoId: achados[0].idFonte
+            };
+          }
+        } catch (_) { /* cai na prévia */ }
+      }
+      // No PC/servidor local o áudio completo é baixado normalmente.
       const completo = await tentarYoutubeCompleto(faixa);
       if (completo) return completo;
       // Último recurso: a prévia oficial de 30 s da API.
@@ -953,6 +980,9 @@
       return { url: info.url, duracao: faixa.duracao, engine: "audio" };
     }
     if (faixa.fonte === "youtube") {
+      if (naNuvem()) {
+        return { url: null, duracao: faixa.duracao, engine: "youtube", videoId: faixa.idFonte };
+      }
       try {
         const info = await youtubeAudio(faixa);
         if (info.titulo) faixa.titulo = info.titulo;

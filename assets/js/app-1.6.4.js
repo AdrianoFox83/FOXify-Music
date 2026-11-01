@@ -6,7 +6,7 @@
   const F = window.FOX_FONTES;
   const P = window.FOXPlayer;
   const CHAVE = "foxify.v1";
-  const VERSAO = "1.6.3";
+  const VERSAO = "1.6.4";
 
   const $ = (sel, raiz = document) => raiz.querySelector(sel);
   const $$ = (sel, raiz = document) => Array.from(raiz.querySelectorAll(sel));
