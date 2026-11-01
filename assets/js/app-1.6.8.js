@@ -6,7 +6,7 @@
   const F = window.FOX_FONTES;
   const P = window.FOXPlayer;
   const CHAVE = "foxify.v1";
-  const VERSAO = "1.6.7";
+  const VERSAO = "1.6.8";
 
   const $ = (sel, raiz = document) => raiz.querySelector(sel);
   const $$ = (sel, raiz = document) => Array.from(raiz.querySelectorAll(sel));
@@ -93,6 +93,12 @@
   function guardarFaixa(t) {
     if (t && t.chave) faixasPorChave.set(t.chave, t);
     return t;
+  }
+  function obterFaixa(chave) {
+    return faixasPorChave.get(chave) ||
+      estado.curtidas.find((x) => x.chave === chave) ||
+      (ultimoEstado.faixa && ultimoEstado.faixa.chave === chave ? ultimoEstado.faixa : null) ||
+      null;
   }
 
   const REGISTRO = new Map();
@@ -1723,7 +1729,7 @@
   }
 
   function modalAdicionarPlaylist(chave) {
-    const t = faixasPorChave.get(chave);
+    const t = obterFaixa(chave);
     if (!t) return;
     abrirModal(`
       <div class="modal__cabeca"><div><strong>Adicionar à playlist</strong><span>${esc(t.titulo)}</span></div>
@@ -1737,7 +1743,7 @@
   }
 
   function adicionarNaPlaylist(chave, playlistId) {
-    const t = faixasPorChave.get(chave);
+    const t = obterFaixa(chave);
     const pl = estado.playlists.find((p) => p.id === playlistId);
     if (!t || !pl) return;
     if (pl.faixas.some((f) => f.chave === t.chave)) { toast("Essa faixa já está na playlist.", "info"); fecharModal(); return; }
@@ -1834,7 +1840,7 @@
   }
 
   function compartilharFaixa(chave) {
-    const t = faixasPorChave.get(chave);
+    const t = obterFaixa(chave);
     if (!t) return;
     const dados = { title: t.titulo, text: `${t.titulo} — ${t.artista || "FOXify"}`, url: t.permalink || location.href };
     if (navigator.share) navigator.share(dados).catch(() => {});
@@ -1881,8 +1887,12 @@
       const alvoFechar = ev.target.closest("[data-fechar-modal]");
       if (alvoFechar) {
         const ehFundo = alvoFechar.classList.contains("modal-fundo");
-        if (ehFundo ? ev.target === alvoFechar : true) fecharModal();
-        return;
+        // O fundo do modal também tem data-fechar-modal; cliques nos botões
+        // internos não podem ser tratados como clique no fundo.
+        if (!ehFundo || ev.target === alvoFechar) {
+          fecharModal();
+          return;
+        }
       }
       const alvo = ev.target.closest("[data-acao]");
       if (alvo) {
@@ -1904,11 +1914,11 @@
           return;
         }
         const especiais = {
-          "menu-tocar": () => { const f = faixasPorChave.get(alvo.dataset.chave); if (f) P.tocarLista([f], 0, "Tocando agora"); fecharModal(); },
-          "menu-seguir": () => { const f = faixasPorChave.get(alvo.dataset.chave); if (f) { P.adicionarProxima(f); toast("Tocando em seguida.", "ok"); } fecharModal(); },
-          "menu-playlist": () => { fecharModal(); setTimeout(() => modalAdicionarPlaylist(alvo.dataset.chave), 180); },
+          "menu-tocar": () => { const f = obterFaixa(alvo.dataset.chave); if (f) P.tocarLista([f], 0, "Tocando agora"); fecharModal(); },
+          "menu-seguir": () => { const f = obterFaixa(alvo.dataset.chave); if (f) { P.adicionarProxima(f); toast("Tocando em seguida.", "ok"); } fecharModal(); },
+          "menu-playlist": () => modalAdicionarPlaylist(alvo.dataset.chave),
           "add-a-playlist": () => adicionarNaPlaylist(alvo.dataset.chave, alvo.dataset.playlist),
-          "nova-playlist-com": () => { const chave = alvo.dataset.chave; fecharModal(); setTimeout(() => modalNovaPlaylistCom(chave), 180); },
+          "nova-playlist-com": () => modalNovaPlaylistCom(alvo.dataset.chave),
           "confirmar-excluir": () => {
             const id = alvo.dataset.id;
             estado.playlists = estado.playlists.filter((p) => p.id !== id);
@@ -2024,7 +2034,7 @@
 
   function modalNovaPlaylistCom(chave) {
     abrirModal(`
-      <div class="modal__cabeca"><div><strong>Nova playlist</strong><span>Ela já começa com “${esc((faixasPorChave.get(chave) || {}).titulo || "a faixa")}”.</span></div>
+      <div class="modal__cabeca"><div><strong>Nova playlist</strong><span>Ela já começa com “${esc((obterFaixa(chave) || {}).titulo || "a faixa")}”.</span></div>
         <button class="btn-icone" data-fechar-modal aria-label="Fechar">${ico("fechar")}</button></div>
       <form class="modal__form" data-form="nova-com-faixa" data-chave="${esc(chave)}">
         <input name="nome" maxlength="48" placeholder="Nome da playlist" required autocomplete="off">
@@ -2159,7 +2169,7 @@
     const chave = form.dataset.chave;
     if (!nome) return;
     const nova = { id: "u:" + Date.now().toString(36), nome, faixas: [], criadaEm: Date.now() };
-    const t = faixasPorChave.get(chave);
+    const t = obterFaixa(chave);
     if (t) nova.faixas.push(guardarFaixa({ ...t }));
     estado.playlists.unshift(nova);
     salvar();

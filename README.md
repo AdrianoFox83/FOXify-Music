@@ -16,6 +16,13 @@ cria o servidor na nuvem; depois é só gerar o APK com a URL do Render.
 
 ---
 
+## Novidades da versão 1.6.8
+
+- Corrige **adicionar à playlist**: os botões dentro do modal não são mais confundidos
+  com o fundo do modal. Dá para criar uma playlist já com a música e adicionar a faixas
+  existentes.
+- A busca de **álbuns** e o **áudio em segundo plano** da 1.6.7 continuam.
+
 ## Novidades da versão 1.6.7
 
 - **Buscar álbuns do cantor:** na busca, alterne entre **Músicas** e **Álbuns**. A busca
