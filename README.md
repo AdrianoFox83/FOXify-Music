@@ -16,6 +16,17 @@ cria o servidor na nuvem; depois é só gerar o APK com a URL do Render.
 
 ---
 
+## Novidades da versão 1.6.7
+
+- **Buscar álbuns do cantor:** na busca, alterne entre **Músicas** e **Álbuns**. A busca
+  usa Deezer e iTunes, mostra a discografia e abre as faixas de cada álbum.
+- **Segundo plano e notificação:** quando o áudio é resolvido como arquivo (via
+  `/api/youtube-audio` + proxy), ele toca em um elemento `<audio>` com **Media Session**.
+  Assim continua ao sair do app e aparece na **barrinha de mídia** do Android, com
+  play/pause, anterior/próxima e busca.
+- Se o YouTube exigir login para um vídeo específico, o app usa o player incorporado como
+  último recurso; nesse caso aquele vídeo só toca com o app aberto.
+
 ## Novidades da versão 1.6.5
 
 - **Som no APK/nuvem:** o player incorporado do YouTube agora é **desmutado** ao tocar

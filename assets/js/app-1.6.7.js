@@ -6,7 +6,7 @@
   const F = window.FOX_FONTES;
   const P = window.FOXPlayer;
   const CHAVE = "foxify.v1";
-  const VERSAO = "1.6.6";
+  const VERSAO = "1.6.7";
 
   const $ = (sel, raiz = document) => raiz.querySelector(sel);
   const $$ = (sel, raiz = document) => Array.from(raiz.querySelectorAll(sel));
@@ -597,7 +597,8 @@
         <button type="button" class="btn-voz" data-acao="busca-voz" aria-label="Buscar por voz" title="Buscar por voz">${ico("microfone")}</button>
         <button type="submit" class="btn btn--primario btn--pequeno">Buscar</button>
       </form>
-      ${chipsFontes(buscaEstado.filtro)}
+      ${buscaModosHtml()}
+      ${buscaEstado.modo === "faixas" ? chipsFontes(buscaEstado.filtro) : ""}
       <div id="resultados-buscar" class="resultados">
         ${buscaEstado.view === "buscar" && buscaEstado.termo ? resultadosHtml() : `
           <section class="secao secao--compacta">
@@ -640,6 +641,7 @@
         <button type="button" class="btn-voz" data-acao="busca-voz" aria-label="Buscar por voz" title="Buscar por voz">${ico("microfone")}</button>
         <button type="submit" class="btn btn--primario">${ico("busca")} Buscar</button>
       </form>
+      ${buscaModosHtml()}
       <div class="estado-fontes">
         ${FONTES_ORDEM.map((f) => {
           const ativa = fonteAtiva(f);
@@ -687,10 +689,121 @@
   }
 
   /* ------------------------------------------------------------ busca/resultados */
-  const buscaEstado = { termo: "", view: "", carregando: false, porFonte: [], filtro: "tudo", quando: 0, lista: [] };
+  const buscaEstado = {
+    termo: "", view: "", carregando: false, porFonte: [], filtro: "tudo", quando: 0, lista: [],
+    modo: "faixas", albuns: [], albumAberto: null
+  };
+
+  function buscaModosHtml() {
+    const m = buscaEstado.modo;
+    return `<div class="busca-modos" role="tablist" aria-label="Tipo de busca">
+      <button class="busca-modo ${m === "faixas" ? "ativo" : ""}" role="tab" aria-selected="${m === "faixas"}"
+        data-acao="modo-busca" data-modo="faixas">${ico("nota")} Músicas</button>
+      <button class="busca-modo ${m === "albuns" ? "ativo" : ""}" role="tab" aria-selected="${m === "albuns"}"
+        data-acao="modo-busca" data-modo="albuns">${ico("lista")} Álbuns</button>
+    </div>`;
+  }
+
+  function albumEscolhido(chave) {
+    return buscaEstado.albuns.find((a) => a.chave === chave) || null;
+  }
+
+  function albumDetalheHtml() {
+    const d = buscaEstado.albumAberto;
+    if (!d) return "";
+    const a = d.album;
+    const capa = a.capa
+      ? `<img src="${esc(a.capa)}" alt="${esc(a.titulo)}" onerror="FOX_IMG_ERRO(this)">`
+      : `<span class="album-hero__vazio">${ico("nota")}</span>`;
+    let corpo = "";
+    if (d.carregando) {
+      corpo = `<div class="esqueleto-linhas">${Array.from({ length: 6 }).map(() => `<div class="esqueleto"></div>`).join("")}</div>`;
+    } else if (!d.faixas.length) {
+      corpo = `<div class="vazio">${ico("nota")}<h3>Álbum sem faixas disponíveis</h3><p>Tente outro álbum ou outra fonte.</p></div>`;
+    } else {
+      registrarLista("album:" + a.chave, d.faixas, a.titulo);
+      d.faixas.forEach(guardarFaixa);
+      corpo = `<div class="lista-faixas">${d.faixas.map((t, i) =>
+        linhaFaixa(t, i, "album:" + a.chave, ultimoEstado)).join("")}</div>`;
+    }
+    return `<div class="album-detalhe">
+      <button class="link album-voltar" data-acao="voltar-albuns">${ico("seta-esquerda")} Voltar aos álbuns</button>
+      <div class="album-hero">
+        <div class="album-hero__arte">${capa}</div>
+        <div class="album-hero__info">
+          <span class="resultados__termo">Álbum · ${esc(nomeFonte(a.fonte))}</span>
+          <h1>${esc(a.titulo)}</h1>
+          <p>${esc(a.artista)}${a.ano ? " · " + esc(a.ano) : ""}${a.total ? " · " + a.total + " faixas" : ""}</p>
+          <div class="album-hero__acoes">
+            <button class="btn btn--primario" data-acao="tocar-album" ${d.faixas.length ? "" : "disabled"}>${ico("play")} Tocar álbum</button>
+            ${a.permalink ? `<a class="btn btn--fantasma" href="${esc(a.permalink)}" target="_blank" rel="noopener">${ico("externo")} Abrir na fonte</a>` : ""}
+          </div>
+        </div>
+      </div>
+      ${corpo}
+    </div>`;
+  }
+
+  function resultadosAlbunsHtml() {
+    if (buscaEstado.carregando) {
+      return `<div class="secao secao--compacta">
+        <div class="secao__topo"><h2>${ico("onda")} Buscando álbuns de “${esc(buscaEstado.termo)}”…</h2></div>
+        <div class="grade-albuns">${Array.from({ length: 8 }).map(() => `<div class="album-card album-card--esqueleto"><div class="esqueleto"></div><div class="esqueleto esqueleto--curto"></div></div>`).join("")}</div>
+      </div>`;
+    }
+    if (buscaEstado.albumAberto) return albumDetalheHtml();
+    if (!buscaEstado.albuns.length) {
+      return `<div class="vazio">${ico("lista")}
+        <h3>Nenhum álbum encontrado para “${esc(buscaEstado.termo)}”</h3>
+        <p>Tente o nome do cantor ou da banda. A busca de álbuns usa Deezer e iTunes.</p>
+        <button class="btn btn--fantasma" data-acao="modo-busca" data-modo="faixas">${ico("nota")} Buscar músicas</button>
+      </div>`;
+    }
+    return `<div class="resultados__topo">
+        <div><span class="resultados__termo">Álbuns de “${esc(buscaEstado.termo)}”</span>
+        <span class="resultados__total">${buscaEstado.albuns.length} ${buscaEstado.albuns.length === 1 ? "álbum" : "álbuns"}</span></div>
+      </div>
+      <div class="grade-albuns">${buscaEstado.albuns.map((a) => `<button class="album-card" data-acao="abrir-album" data-chave="${esc(a.chave)}">
+        <span class="album-card__arte">${a.capa ? `<img src="${esc(a.capa)}" alt="${esc(a.titulo)}" loading="lazy" onerror="FOX_IMG_ERRO(this)">` : `<span class="album-card__vazio">${ico("nota")}</span>`}</span>
+        <strong>${esc(a.titulo)}</strong>
+        <small>${esc(a.artista)}${a.ano ? " · " + esc(a.ano) : ""}</small>
+        <span class="album-card__fonte">${seloFonte(a.fonte)}</span>
+      </button>`).join("")}</div>`;
+  }
+
+  async function abrirAlbum(chave) {
+    const a = albumEscolhido(chave);
+    if (!a) return;
+    buscaEstado.albumAberto = { album: a, faixas: [], carregando: true, erro: false };
+    renderizarResultados();
+    try {
+      const faixas = await F.faixasDoAlbum(a.fonte, a.idFonte);
+      const atual = buscaEstado.albumAberto;
+      if (!atual || atual.album.chave !== chave) return;
+      atual.faixas = faixas;
+      atual.carregando = false;
+      atual.erro = false;
+      renderizarResultados();
+      if (!faixas.length) toast("Este álbum não tem faixas disponíveis.", "info");
+    } catch (_) {
+      const atual = buscaEstado.albumAberto;
+      if (!atual || atual.album.chave !== chave) return;
+      atual.carregando = false;
+      atual.erro = true;
+      renderizarResultados();
+      toast("Não foi possível carregar as faixas deste álbum.", "erro");
+    }
+  }
+
+  function tocarAlbumAberto(i = 0) {
+    const d = buscaEstado.albumAberto;
+    if (!d || !d.faixas.length) return;
+    P.tocarLista(d.faixas.slice(), Math.max(0, Math.min(i, d.faixas.length - 1)), d.album.titulo);
+    toast(`Tocando “${d.album.titulo}” · ${d.faixas.length} faixas`, "ok", 2200);
+  }
 
   function resultadosHtml() {
-    if (buscaEstado.carregando) {
+    if (buscaEstado.modo === "albuns") return resultadosAlbunsHtml();    if (buscaEstado.carregando) {
       return `<div class="secao secao--compacta">
         <div class="secao__topo"><h2>${ico("onda")} Buscando “${esc(buscaEstado.termo)}”…</h2></div>
         <div class="esqueleto-linhas">${Array.from({ length: 6 }).map(() => `<div class="esqueleto"></div>`).join("")}</div>
@@ -910,10 +1023,31 @@
     buscaEstado.carregando = true;
     buscaEstado.porFonte = [];
     buscaEstado.filtro = "tudo";
+    buscaEstado.albumAberto = null;
     salvarBusca(termo);
     const hero = $(".pagina-topo--hero");
     if (hero && view === "suamusica") hero.classList.add("pagina-topo--compacta");
     renderizarResultados();
+    if (buscaEstado.modo === "albuns") {
+      buscaEstado.albuns = [];
+      renderizarResultados();
+      try {
+        const achados = await F.buscarAlbuns(termo, ["deezer", "itunes"], 24);
+        if (buscaEstado.termo !== termo) return;
+        buscaEstado.albuns = achados.itens || [];
+        buscaEstado.carregando = false;
+        buscaEstado.quando = Date.now();
+        renderizarResultados();
+        if (!buscaEstado.albuns.length) toast("Nenhum álbum encontrado. Tente o nome do cantor.", "info");
+      } catch (_) {
+        if (buscaEstado.termo !== termo) return;
+        buscaEstado.albuns = [];
+        buscaEstado.carregando = false;
+        renderizarResultados();
+        toast("Não foi possível buscar álbuns agora.", "erro");
+      }
+      return;
+    }
     const ativas = fontesAtivas();
     if (!ativas.length) {
       buscaEstado.carregando = false;
@@ -1458,6 +1592,22 @@
     "busca-voz-home": (el) => ouvirNaHome(el),
     "limpar-buscas": () => { estado.buscas = []; salvar(); renderizarVista(); toast("Buscas recentes limpas.", "ok", 1800); },
     "limpar-historico": () => { estado.historico = []; salvar(); renderizarVista(); toast("Histórico limpo.", "ok", 1800); },
+    "modo-busca": (el) => {
+      const modo = el.dataset.modo === "albuns" ? "albuns" : "faixas";
+      if (buscaEstado.modo === modo) return;
+      buscaEstado.modo = modo;
+      buscaEstado.albumAberto = null;
+      buscaEstado.albuns = [];
+      renderizarVista();
+      if (buscaEstado.termo) executarBusca(buscaEstado.termo, buscaEstado.view || "suamusica");
+    },
+    "abrir-album": (el) => abrirAlbum(el.dataset.chave),
+    "voltar-albuns": () => {
+      buscaEstado.albumAberto = null;
+      renderizarResultados();
+    },
+    "tocar-album": () => tocarAlbumAberto(0),
+    "tocar-album-faixa": (el) => tocarAlbumAberto(Number(el.dataset.i) || 0),
     "nova-playlist": () => modalNovaPlaylist(),
     "renomear-playlist": (el) => modalNovaPlaylist(el.dataset.id),
     "excluir-playlist": (el) => excluirPlaylist(el.dataset.id),

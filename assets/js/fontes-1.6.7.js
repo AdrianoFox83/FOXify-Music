@@ -789,6 +789,139 @@
     return itens.slice(0, limite);
   }
 
+  /* ---------------------------------------------------------------- álbuns */
+  function albumDeezer(a, nomeArtista) {
+    return {
+      tipo: "album", chave: "deezer-album:" + a.id, id: "deezer-album:" + a.id,
+      fonte: "deezer", idFonte: String(a.id), titulo: a.title || "Álbum",
+      artista: (a.artist && a.artist.name) || nomeArtista || "Deezer",
+      capa: a.cover_xl || a.cover_big || a.cover_medium || "",
+      ano: String(a.release_date || "").slice(0, 4),
+      total: a.nb_tracks || 0, permalink: a.link || ""
+    };
+  }
+
+  async function deezerAlbuns(termo, limite) {
+    let artista = null;
+    try {
+      const achados = await jsonProxy(
+        "https://api.deezer.com/search/artist?q=" + encodeURIComponent(termo) + "&limit=1", 20000);
+      artista = achados && achados.data && achados.data[0];
+    } catch (_) { /* tenta a busca direta de álbuns */ }
+    let dados = null;
+    if (artista && artista.id) {
+      dados = await jsonProxy(
+        "https://api.deezer.com/artist/" + encodeURIComponent(artista.id) + "/albums?limit=" +
+        Math.min(50, Math.max(limite, 12)), 20000);
+    }
+    if (!dados || !Array.isArray(dados.data) || !dados.data.length) {
+      dados = await jsonProxy(
+        "https://api.deezer.com/search/album?q=" + encodeURIComponent(termo) + "&limit=" +
+        Math.min(50, Math.max(limite, 12)), 20000);
+    }
+    if (!dados || !Array.isArray(dados.data)) throw new Error("Deezer não retornou álbuns");
+    const vistos = new Set();
+    return dados.data
+      .filter((a) => a && a.id && a.title && !vistos.has(a.id) && vistos.add(a.id))
+      .map((a) => albumDeezer(a, artista && artista.name))
+      .slice(0, limite);
+  }
+
+  function albumItunes(a) {
+    return {
+      tipo: "album", chave: "itunes-album:" + a.collectionId, id: "itunes-album:" + a.collectionId,
+      fonte: "itunes", idFonte: String(a.collectionId), titulo: a.collectionName || "Álbum",
+      artista: a.artistName || "Apple Music",
+      capa: String(a.artworkUrl100 || "")
+        .replace("100x100bb", "600x600bb").replace("100x100", "600x600"),
+      ano: String(a.releaseDate || "").slice(0, 4),
+      total: a.trackCount || 0, permalink: a.collectionViewUrl || ""
+    };
+  }
+
+  async function itunesAlbuns(termo, limite) {
+    const alvo = "https://itunes.apple.com/search?term=" + encodeURIComponent(termo) +
+      "&media=music&entity=album&limit=" + Math.min(50, Math.max(limite, 12)) + "&country=BR";
+    const dados = await jsonProxy(alvo, 20000);
+    if (!dados || !Array.isArray(dados.results)) throw new Error("iTunes não retornou álbuns");
+    const vistos = new Set();
+    return dados.results
+      .filter((a) => a && a.collectionId && a.collectionName &&
+        (a.collectionType === "Album" || a.wrapperType === "collection") &&
+        !vistos.has(a.collectionId) && vistos.add(a.collectionId))
+      .map(albumItunes)
+      .slice(0, limite);
+  }
+
+  async function buscarAlbuns(termo, fontesAtivas, limite = 24) {
+    const ativas = (fontesAtivas && fontesAtivas.length ? fontesAtivas : ["deezer", "itunes"])
+      .filter((f) => f === "deezer" || f === "itunes");
+    const tarefas = ativas.map(async (fonte) => {
+      try {
+        const itens = fonte === "deezer"
+          ? await deezerAlbuns(termo, limite)
+          : await itunesAlbuns(termo, limite);
+        return { fonte, itens, erro: null };
+      } catch (e) {
+        return { fonte, itens: [], erro: e && e.name === "AbortError" ? "tempo" : "falha" };
+      }
+    });
+    const grupos = await Promise.all(tarefas);
+    const saida = [];
+    const max = Math.max(0, ...grupos.map((g) => g.itens.length));
+    for (let i = 0; i < max && saida.length < limite; i++) {
+      for (const g of grupos) if (g.itens[i]) saida.push(g.itens[i]);
+    }
+    return { itens: saida.slice(0, limite), grupos };
+  }
+
+  async function deezerFaixasAlbum(id) {
+    const dados = await jsonProxy(
+      "https://api.deezer.com/album/" + encodeURIComponent(id), 20000);
+    if (!dados || !dados.tracks || !Array.isArray(dados.tracks.data)) {
+      throw new Error("Deezer não retornou as faixas do álbum");
+    }
+    return dados.tracks.data.filter((t) => t && t.title).map((t, i) => ({
+      chave: "deezer:" + t.id, id: "deezer:" + t.id, fonte: "deezer",
+      idFonte: String(t.id), titulo: t.title,
+      artista: (t.artist && t.artist.name) || (dados.artist && dados.artist.name) || "Deezer",
+      capa: (dados.cover_xl || dados.cover_big || dados.cover_medium || ""),
+      duracao: t.duration || 30, genero: "", licenca: "Deezer", vistas: 0,
+      previa: false, duracaoOriginal: t.duration || 0, url: null,
+      preview: String(t.preview || "").replace(/^http:/, "https:"),
+      permalink: t.link || dados.link || "", ordem: i, popularidade: t.rank || 0
+    }));
+  }
+
+  async function itunesFaixasAlbum(id) {
+    const alvo = "https://itunes.apple.com/lookup?id=" + encodeURIComponent(id) +
+      "&entity=song&limit=200&country=BR";
+    const dados = await jsonProxy(alvo, 20000);
+    if (!dados || !Array.isArray(dados.results)) {
+      throw new Error("iTunes não retornou as faixas do álbum");
+    }
+    return dados.results
+      .filter((t) => t && t.wrapperType === "track" && t.trackName)
+      .map((t, i) => ({
+        chave: "itunes:" + t.trackId, id: "itunes:" + t.trackId, fonte: "itunes",
+        idFonte: String(t.trackId || ""), titulo: t.trackName,
+        artista: t.artistName || "Apple Music",
+        capa: String(t.artworkUrl100 || "")
+          .replace("100x100bb", "600x600bb").replace("100x100", "600x600"),
+        duracao: Math.round((t.trackTimeMillis || 0) / 1000) || 30,
+        genero: t.primaryGenreName || "", licenca: "Apple Music", vistas: 0,
+        previa: false, duracaoOriginal: Math.round((t.trackTimeMillis || 0) / 1000),
+        url: null, preview: t.previewUrl || "", permalink: t.trackViewUrl || "",
+        ordem: i, popularidade: 0
+      }));
+  }
+
+  async function faixasDoAlbum(fonte, id) {
+    if (fonte === "deezer") return deezerFaixasAlbum(id);
+    if (fonte === "itunes") return itunesFaixasAlbum(id);
+    throw new Error("Fonte de álbum desconhecida");
+  }
+
   /* ------------------------------------------------------------------ motor */
   const buscadores = {
     audius: (termo, limite) => doCache("audius:" + termo + ":" + limite, () => audiusBuscar(termo, limite)),
@@ -900,6 +1033,45 @@
     };
   }
 
+  // Na nuvem, o endpoint /api/youtube-audio resolve uma URL direta do CDN.
+  // O áudio passa pelo proxy (com Range) e toca no elemento <audio>, o que
+  // permite continuar em segundo plano e mostrar os controles na notificação.
+  async function audioNuvemVideo(videoId, faixa) {
+    if (!videoId) throw new Error("videoId ausente");
+    if (!(await detectarProxy())) throw erroProxy();
+    const r = await fetch(apiUrl("api/youtube-audio?videoId=" + encodeURIComponent(videoId)), {
+      cache: "no-store"
+    });
+    if (!r.ok) throw new Error("resolver YouTube HTTP " + r.status);
+    const info = await r.json();
+    if (!info || !info.url) throw new Error("resolver YouTube sem URL");
+    const url = apiUrl("api/proxy?url=" + encodeURIComponent(info.url));
+    if (info.titulo) faixa.titulo = info.titulo;
+    if (info.artista) faixa.artista = info.artista;
+    if (info.duracao && !faixa.duracao) faixa.duracao = info.duracao;
+    faixa.viaYoutube = true;
+    faixa.previa = false;
+    return {
+      url,
+      duracao: info.duracao || faixa.duracao,
+      engine: "audio",
+      titulo: faixa.titulo,
+      artista: faixa.artista
+    };
+  }
+
+  async function audioNuvemFaixa(faixa) {
+    try {
+      const consulta = `${faixa.titulo || ""} ${faixa.artista || ""} official`.trim();
+      const achados = await youtubeBuscar(consulta, 1);
+      const alvo = (achados || []).find((r) => r && r.idFonte);
+      if (!alvo) return null;
+      return await audioNuvemVideo(alvo.idFonte, faixa);
+    } catch (_) {
+      return null;
+    }
+  }
+
   function naNuvem() {
     let host = location.hostname;
     if (config.servidor) {
@@ -951,6 +1123,8 @@
             faixa.viaYoutube = true;
             faixa.previa = false;
             if (achados[0].duracao) faixa.duracao = achados[0].duracao;
+            const audio = await audioNuvemVideo(achados[0].idFonte, faixa).catch(() => null);
+            if (audio) return audio;
             return {
               url: null, duracao: faixa.duracao, engine: "youtube",
               videoId: achados[0].idFonte
@@ -981,6 +1155,8 @@
     }
     if (faixa.fonte === "youtube") {
       if (naNuvem()) {
+        const audio = await audioNuvemVideo(faixa.idFonte, faixa).catch(() => null);
+        if (audio) return audio;
         return { url: null, duracao: faixa.duracao, engine: "youtube", videoId: faixa.idFonte };
       }
       try {
@@ -1006,7 +1182,7 @@
   }
 
   window.FOX_FONTES = {
-    configurar, buscar, buscarEm, carregarEstacao, demoDaEstacao, urlParaTocar,
+    configurar, buscar, buscarEm, buscarAlbuns, faixasDoAlbum, carregarEstacao, demoDaEstacao, urlParaTocar,
     resolverDetalhes, detectarProxy, normalizarAudius, normalizarArchive, normalizarJamendo,
     normalizarYoutube, parseYoutube, parseBandcamp, semAcento
   };
