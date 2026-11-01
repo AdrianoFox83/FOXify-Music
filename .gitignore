@@ -1,8 +1,7 @@
-﻿_cache_yt/
+_cache_yt/
+_cache_cookies.txt
+cookies*.txt
+_vendor/
 __pycache__/
 *.pyc
 FOXify.zip
-_gh_token
-_gh_device.json
-
-_vendor/

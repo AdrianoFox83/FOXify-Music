@@ -173,6 +173,11 @@ diário, uma VPS pequena é mais estável.
 Nesse caso, em **Ajustes → Servidor do FOXify (APK)**, informe a URL **HTTPS** do deploy
 e toque em **Testar servidor**. O Android bloqueia uma página HTTPS chamando HTTP.
 
+**Se o Render bloquear o YouTube:** adicione seus cookies como **Secret File**
+`cookies.txt` no Render (o servidor lê `/etc/secrets/cookies.txt`) e faça Manual Deploy.
+`/api/health` mostrará `"cookies": true`. O passo a passo está em
+[`deploy/README.md`](deploy/README.md). **Nunca** comite cookies no GitHub.
+
 > **Importante:** YouTube, Deezer e iTunes passam pelo servidor para busca e áudio. Um
 > site estático (Netlify/GitHub Pages) **não** tem esse servidor; publique o `servidor.py`
 > em Docker como acima. O PC local (`FOXify.bat`) continua útil para testes, mas não é

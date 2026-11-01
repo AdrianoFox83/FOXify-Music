@@ -8,6 +8,23 @@ o proxy e o áudio do YouTube, com CORS e `PORT` configurável.
 Depois do deploy, o endereço público (`https://...)` vira o endereço do app. O APK
 pode ser gerado a partir dele (TWA/PWA) ou configurado para usar esse servidor.
 
+## Cookies do YouTube (quando o IP da nuvem é bloqueado)
+
+O Render pode receber “confirme que você não é um robô” ao baixar áudio. Se você tem
+cookies de uma conta YouTube, coloque-os no servidor como **segredo**:
+
+1. No Render, abra o serviço → **Environment** → **Secret Files**.
+2. Crie o arquivo **`cookies.txt`** com o conteúdo no formato Netscape.
+3. Salve e faça **Manual Deploy**.
+4. Abra `https://SEU-APP/api/health`; deve aparecer `"cookies": true`.
+
+O `servidor.py` lê automaticamente `/etc/secrets/cookies.txt`. Também aceita a variável
+`YT_COOKIES_B64` (conteúdo do arquivo em Base64) ou `YT_COOKIES_FILE` (caminho).
+
+> **Nunca** comite `cookies.txt` no GitHub. Esses cookies dão acesso à conta; depois de
+> testar, encerre as sessões dessa conta no YouTube/Google se quiser invalidá-los.
+
+
 ## Opção 1 — Render (mais simples)
 
 1. Crie um repositório no GitHub e envie **o conteúdo desta pasta** para ele

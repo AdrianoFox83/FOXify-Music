@@ -13,6 +13,7 @@ Nenhum dado é gravado: as requisições passam direto para Audius/Archive/Jamen
 from __future__ import annotations
 
 import argparse
+import base64
 import http.client
 import ipaddress
 import json
@@ -43,6 +44,29 @@ CABECALHOS_PROXY = ("Content-Type", "Content-Length", "Content-Range", "Accept-R
 RE_FAIXA = re.compile(r"bytes=(\d*)-(\d*)")
 UA_NAVEGADOR = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
                 "(KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36")
+
+
+def cookies_youtube():
+    """Aceita cookies do YouTube por arquivo secreto ou variável de ambiente."""
+    caminho = os.environ.get("YT_COOKIES_FILE") or "/etc/secrets/cookies.txt"
+    if os.path.isfile(caminho) and os.path.getsize(caminho) > 20:
+        return caminho
+    bruto = os.environ.get("YT_COOKIES_B64") or os.environ.get("YT_COOKIES")
+    if not bruto:
+        return None
+    try:
+        if os.environ.get("YT_COOKIES_B64"):
+            bruto = base64.b64decode(bruto).decode("utf-8", "replace")
+        destino = os.path.join(RAIZ, "_cache_cookies.txt")
+        with open(destino, "w", encoding="utf-8") as arquivo:
+            arquivo.write(bruto if bruto.endswith("\n") else bruto + "\n")
+        try:
+            os.chmod(destino, 0o600)
+        except Exception:
+            pass
+        return destino
+    except Exception:
+        return None
 CABECALHOS_BASE = {
     "User-Agent": UA_NAVEGADOR,
     "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.8",
@@ -114,7 +138,7 @@ class Servidor(SimpleHTTPRequestHandler):
         rota = urlparse(self.path).path
         if rota == "/api/health":
             return self.json({"ok": True, "app": "FOXify", "proxy": self.proxy_ativo,
-                              "versao": "1.6.1"})
+                              "cookies": bool(cookies_youtube()), "versao": "1.6.2"})
         if rota == "/api/proxy":
             if not self.proxy_ativo:
                 return self.json({"erro": "proxy desativado"}, 403)
@@ -275,13 +299,16 @@ class Servidor(SimpleHTTPRequestHandler):
             try:
                 ambiente = dict(os.environ)
                 ambiente["PYTHONPATH"] = VENDOR + os.pathsep + ambiente.get("PYTHONPATH", "")
+                cookies = cookies_youtube()
                 comando = [
                     sys.executable, "-m", "yt_dlp",
                     "-f", "bestaudio[ext=m4a]/bestaudio[ext=webm]/bestaudio/best",
                     "--no-playlist", "--quiet", "--no-warnings", "--no-progress",
                     "-o", os.path.join(CACHE_YT, vid + ".%(ext)s"),
-                    "https://www.youtube.com/watch?v=" + vid,
                 ]
+                if cookies:
+                    comando += ["--cookies", cookies]
+                comando.append("https://www.youtube.com/watch?v=" + vid)
                 opcoes = {}
                 if os.name == "nt":
                     opcoes["creationflags"] = 0x08000000  # sem janela de console
@@ -680,7 +707,7 @@ def main():
     servidor.daemon_threads = True
     ip = ip_local()
     print("\n" + "=" * 62)
-    print("  FOXify 1.6.1 — player de música livre")
+    print("  FOXify 1.6.2 — player de música livre")
     print("=" * 62)
     print(f"  Neste computador : http://127.0.0.1:{args.porta}/")
     print(f"  No celular (Wi-Fi): http://{ip}:{args.porta}/")

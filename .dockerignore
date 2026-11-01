@@ -5,6 +5,8 @@ __pycache__
 *.pyc
 _vendor
 _cache_yt
+_cache_cookies.txt
+cookies*.txt
 _pesquisa
 _teste
 node_modules
