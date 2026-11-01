@@ -67,6 +67,36 @@ def cookies_youtube():
         return destino
     except Exception:
         return None
+def cookies_header():
+    """Monta o cabeçalho Cookie a partir do arquivo Netscape do YouTube."""
+    caminho = cookies_youtube()
+    if not caminho:
+        return ""
+    pares = []
+    try:
+        with open(caminho, "r", encoding="utf-8", errors="ignore") as arquivo:
+            for linha in arquivo:
+                linha = linha.rstrip("\n")
+                if not linha or (linha.startswith("#") and not linha.startswith("#HttpOnly_")):
+                    continue
+                if linha.startswith("#HttpOnly_"):
+                    linha = linha[len("#HttpOnly_"):]
+                campos = linha.split("\t")
+                if len(campos) < 7:
+                    continue
+                nome, valor = campos[5].strip(), campos[6].strip()
+                if nome:
+                    pares.append(nome + "=" + valor)
+    except Exception:
+        return ""
+    return "; ".join(pares)
+
+
+def cabecalho_cookie():
+    bruto = cookies_header()
+    return bruto if len(bruto) < 12000 else ""
+
+
 CABECALHOS_BASE = {
     "User-Agent": UA_NAVEGADOR,
     "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.8",
@@ -78,6 +108,25 @@ JAM_VERSION = "4rkl5f"
 # Cache das URLs de áudio do YouTube e da chave interna (evita nova consulta a cada play).
 YT_CFG = {"chave": "", "quando": 0.0}
 YT_AUDIO = {}
+# Alguns clientes do player liberam áudio em IPs de datacenter; tentamos mais de um.
+YT_CLIENTES = {
+    "android": {
+        "nome": "ANDROID", "versao": "20.10.38", "sdk": 30, "xclient": "3",
+        "ua": "com.google.android.youtube/20.10.38 (Linux; U; Android 11) gzip",
+    },
+    "android_vr": {
+        "nome": "ANDROID_VR", "versao": "1.60.19", "sdk": 32, "xclient": "28",
+        "ua": "com.google.android.apps.youtube.vr.oculus/1.60.19 (Linux; U; Android 12; en_US; Quest 3 Build/SQ3A.220605.009.A1) gzip",
+    },
+    "web_embedded": {
+        "nome": "WEB_EMBEDDED_PLAYER", "versao": "1.20250310.01.00", "sdk": 0, "xclient": "56",
+        "ua": UA_NAVEGADOR,
+    },
+    "tv_embedded": {
+        "nome": "TVHTML5_SIMPLY_EMBEDDED_PLAYER", "versao": "2.0", "sdk": 0, "xclient": "85",
+        "ua": UA_NAVEGADOR,
+    },
+}
 
 
 def ip_local() -> str:
@@ -194,27 +243,36 @@ class Servidor(SimpleHTTPRequestHandler):
         YT_CFG["quando"] = time.time()
         return YT_CFG["chave"]
 
-    def yt_info(self, vid):
+    def yt_info(self, vid, cliente="android"):
         """Consulta o player do YouTube e devolve a URL de áudio + metadados."""
         chave = self.yt_chave()
+        cfg = YT_CLIENTES.get(cliente) or YT_CLIENTES["android"]
+        ctx = {
+            "clientName": cfg["nome"], "clientVersion": cfg["versao"],
+            "hl": "pt", "gl": "BR",
+        }
+        if cfg["sdk"]:
+            ctx["androidSdkVersion"] = cfg["sdk"]
         corpo = {
-            "context": {"client": {
-                "clientName": "ANDROID", "clientVersion": "20.10.38",
-                "androidSdkVersion": 30, "hl": "pt", "gl": "BR",
-            }},
+            "context": {
+                "client": ctx,
+                "thirdParty": {"embedUrl": "https://www.youtube.com/"},
+            },
             "videoId": vid, "contentCheckOk": True, "racyCheckOk": True,
         }
-        pedido = urllib.request.Request(
-            "https://www.youtube.com/youtubei/v1/player?key=" + chave,
-            data=json.dumps(corpo).encode("utf-8"),
-            headers={
-                "Content-Type": "application/json",
-                "User-Agent": "com.google.android.youtube/20.10.38 (Linux; U; Android 11) gzip",
-                "X-Youtube-Client-Name": "3",
-                "X-Youtube-Client-Version": "20.10.38",
-                "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.8",
-            },
-        )
+        cabecalhos = {
+            "Content-Type": "application/json",
+            "User-Agent": cfg["ua"],
+            "X-Youtube-Client-Name": cfg["xclient"],
+            "X-Youtube-Client-Version": cfg["versao"],
+            "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.8",
+            "Origin": "https://www.youtube.com",
+            "Referer": "https://www.youtube.com/",
+        }
+        cookie = cabecalho_cookie()
+        if cookie:
+            cabecalhos["Cookie"] = cookie
+        dados_json = json.dumps(corpo).encode("utf-8")
         # Importante: a URL de áudio fica assinada com o IP de origem.
         # Forçamos IPv4 para o IP não mudar entre o player e o CDN.
         conexao = http.client.HTTPSConnection(
@@ -222,7 +280,7 @@ class Servidor(SimpleHTTPRequestHandler):
             context=ssl.create_default_context(), source_address=("0.0.0.0", 0))
         try:
             conexao.request("POST", "/youtubei/v1/player?key=" + chave,
-                            body=pedido.data, headers=dict(pedido.headers))
+                            body=dados_json, headers=cabecalhos)
             resposta = conexao.getresponse()
             dados = json.loads(resposta.read())
         finally:
@@ -263,6 +321,7 @@ class Servidor(SimpleHTTPRequestHandler):
             "artista": detalhes.get("author") or "",
             "duracao": int(detalhes.get("lengthSeconds") or 0),
             "tamanho": tamanho,
+            "cliente": cliente,
         }
 
     def youtube_audio(self):
@@ -271,16 +330,27 @@ class Servidor(SimpleHTTPRequestHandler):
         vid = (consulta.get("videoId") or [""])[0].strip()
         if not re.fullmatch(r"[A-Za-z0-9_-]{11}", vid):
             return self.json({"erro": "videoId inválido"}, 400)
+        pedido = (consulta.get("client") or [""])[0].strip()
+        ordem = []
+        if pedido in YT_CLIENTES:
+            ordem.append(pedido)
+        for nome in ("android", "android_vr", "web_embedded", "tv_embedded"):
+            if nome not in ordem:
+                ordem.append(nome)
         agora = time.time()
-        salvo = YT_AUDIO.get(vid)
-        if salvo and agora - salvo[0] < 15 * 60:
-            return self.json(salvo[1])
-        try:
-            resposta = self.yt_info(vid)
-            YT_AUDIO[vid] = (agora, resposta)
-            return self.json(resposta)
-        except Exception as erro:
-            return self.json({"erro": "YouTube: " + str(erro)}, 502)
+        ultimo_erro = None
+        for cliente in ordem:
+            chave_cache = vid + ":" + cliente
+            salvo = YT_AUDIO.get(chave_cache)
+            if salvo and agora - salvo[0] < 15 * 60:
+                return self.json(salvo[1])
+            try:
+                resposta = self.yt_info(vid, cliente)
+                YT_AUDIO[chave_cache] = (agora, resposta)
+                return self.json(resposta)
+            except Exception as erro:
+                ultimo_erro = erro
+        return self.json({"erro": "YouTube: " + str(ultimo_erro or "falha")}, 502)
 
     def yt_baixar(self, vid):
         """Baixa só o áudio do vídeo (yt-dlp) e devolve o arquivo em cache."""
