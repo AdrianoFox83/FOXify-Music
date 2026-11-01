@@ -1,5 +1,5 @@
 /* FOXify — service worker (app shell offline + faixas demo em cache). */
-const VERSAO = "foxify-v1.7.5";
+const VERSAO = "foxify-v1.7.6";
 const ESSENCIAIS = [
   "./",
   "./index.html",

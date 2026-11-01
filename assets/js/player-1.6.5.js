@@ -186,6 +186,10 @@
               limparVigia();
               const palco = document.getElementById("yt-palco");
               if (palco) palco.classList.remove("pendente");
+              try {
+                if (audio.muted) { if (yt.mute) yt.mute(); }
+                else { if (yt.setVolume) yt.setVolume(Math.round(audio.volume * 100)); if (yt.unMute) yt.unMute(); }
+              } catch (_) { /* player ainda montando */ }
               atualizarMidia("playing");
               iniciarTimerYt();
               emitir();
@@ -230,6 +234,10 @@
         ytVideoId = info.videoId;
       }
       if (yt.setVolume) yt.setVolume(Math.round(audio.volume * 100));
+      try {
+        if (audio.muted) { if (yt.mute) yt.mute(); }
+        else if (yt.unMute) { yt.unMute(); }
+      } catch (_) { /* o toque no play desmuta depois */ }
       if (autoplay) {
         try { yt.playVideo(); } catch (_) { /* aguarda evento */ }
         const palco = document.getElementById("yt-palco");
@@ -431,7 +439,14 @@
       let s = -1;
       try { s = yt.getPlayerState(); } catch (_) {}
       if (s === 1) yt.pauseVideo();
-      else { mostrarYt(true); yt.playVideo(); }
+      else {
+        mostrarYt(true);
+        try {
+          if (yt.setVolume) yt.setVolume(Math.round(audio.volume * 100));
+          if (!audio.muted && yt.unMute) yt.unMute();
+        } catch (_) {}
+        yt.playVideo();
+      }
       return;
     }
     if (carregando) return;

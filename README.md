@@ -18,6 +18,10 @@ cria o servidor na nuvem; depois é só gerar o APK com a URL do Render.
 
 ## Novidades da versão 1.6.5
 
+- **Som no APK/nuvem:** o player incorporado do YouTube agora é **desmutado** ao tocar
+  (antes ele ficava mudo para permitir autoplay). No YouTube, toque no play se o navegador
+  bloquear o início automático.
+
 - **Busca por voz:** botão de microfone nas barras de busca. Fale o nome da música,
   artista ou estilo; o app preenche a busca e consulta as três fontes.
 - Usa a API de voz do navegador (`SpeechRecognition`, pt-BR). No Chrome Android ou no
