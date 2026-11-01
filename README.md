@@ -22,8 +22,9 @@ cria o servidor na nuvem; depois é só gerar o APK com a URL do Render.
   (antes ele ficava mudo para permitir autoplay). No YouTube, toque no play se o navegador
   bloquear o início automático.
 
-- **Busca por voz:** botão de microfone nas barras de busca. Fale o nome da música,
-  artista ou estilo; o app preenche a busca e consulta as três fontes.
+- **Busca por voz:** botão de microfone nas barras de busca, inclusive na barra rápida
+  da tela inicial. Fale o nome da música, artista ou estilo; o app preenche a busca e
+  consulta as três fontes.
 - Usa a API de voz do navegador (`SpeechRecognition`, pt-BR). No Chrome Android ou no
   APK/TWA ele pede permissão de microfone; se o navegador não suportar, mostra um aviso.
 - Nenhum áudio é gravado pelo FOXify: o reconhecimento é feito pelo navegador.

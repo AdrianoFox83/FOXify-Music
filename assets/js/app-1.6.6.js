@@ -6,7 +6,7 @@
   const F = window.FOX_FONTES;
   const P = window.FOXPlayer;
   const CHAVE = "foxify.v1";
-  const VERSAO = "1.6.5";
+  const VERSAO = "1.6.6";
 
   const $ = (sel, raiz = document) => raiz.querySelector(sel);
   const $$ = (sel, raiz = document) => Array.from(raiz.querySelectorAll(sel));
@@ -57,6 +57,7 @@
   let salvarTimer = null;
   let reconhecimentoVoz = null;
   let formOuvindo = null;
+  let botaoOuvindo = null;
 
   function carregarEstado() {
     try {
@@ -490,11 +491,14 @@
         </a>
       </header>
 
-      <button class="busca-atalho" data-rota="#/suamusica">
-        ${ico("busca")}
-        <span>Buscar em sites de música grátis…</span>
-        <span class="busca-atalho__fonte">${ico("globo")}</span>
-      </button>
+      <div class="busca-atalho-wrap">
+        <button class="busca-atalho" data-rota="#/suamusica">
+          ${ico("busca")}
+          <span>Buscar em sites de música grátis…</span>
+          <span class="busca-atalho__fonte">${ico("globo")}</span>
+        </button>
+        <button type="button" class="btn-voz btn-voz--atalho" data-acao="busca-voz-home" aria-label="Buscar por voz" title="Buscar por voz">${ico("microfone")}</button>
+      </div>
 
       ${avisoInstalacao()}
 
@@ -765,16 +769,21 @@
   }
 
   function limparEstadoVoz(form) {
-    if (!form) return;
-    form.classList.remove("ouvindo");
-    const botao = form.querySelector(".btn-voz");
-    if (botao) botao.classList.remove("ativo");
-    const input = form.querySelector('input[name="q"]');
-    if (input && input.dataset.placeholderOriginal) {
-      input.placeholder = input.dataset.placeholderOriginal;
-      delete input.dataset.placeholderOriginal;
+    if (form) {
+      form.classList.remove("ouvindo");
+      const botao = form.querySelector(".btn-voz");
+      if (botao) botao.classList.remove("ativo");
+      const input = form.querySelector('input[name="q"]');
+      if (input && input.dataset.placeholderOriginal) {
+        input.placeholder = input.dataset.placeholderOriginal;
+        delete input.dataset.placeholderOriginal;
+      }
+      if (formOuvindo === form) formOuvindo = null;
     }
-    if (formOuvindo === form) formOuvindo = null;
+    if (botaoOuvindo) {
+      botaoOuvindo.classList.remove("ativo");
+      botaoOuvindo = null;
+    }
     reconhecimentoVoz = null;
   }
 
@@ -840,6 +849,54 @@
     recon.onend = () => limparEstadoVoz(form);
     try { recon.start(); } catch (_) {
       limparEstadoVoz(form);
+      toast("Não foi possível iniciar o microfone.", "erro", 3500);
+    }
+  }
+
+  function ouvirNaHome(botao) {
+    if (reconhecimentoVoz) { pararVoz(); return; }
+    const Recon = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!Recon) {
+      toast("Busca por voz não é suportada neste navegador. No Android, use o Chrome.", "erro", 4600);
+      return;
+    }
+    let recon;
+    try { recon = new Recon(); } catch (_) {
+      toast("Não foi possível iniciar o microfone.", "erro", 3500);
+      return;
+    }
+    reconhecimentoVoz = recon;
+    botaoOuvindo = botao;
+    if (botao) botao.classList.add("ativo");
+    recon.lang = "pt-BR";
+    recon.interimResults = false;
+    recon.maxAlternatives = 1;
+    recon.continuous = false;
+    recon.onresult = (evento) => {
+      const texto = String(evento.results[0][0].transcript || "").trim();
+      limparEstadoVoz(null);
+      if (!texto) { toast("Não ouvi nada. Tente de novo.", "erro", 3000); return; }
+      location.hash = "#/suamusica";
+      setTimeout(() => {
+        const input = $("#busca-livre-input");
+        if (input) input.value = texto;
+        executarBusca(texto, "suamusica");
+      }, 320);
+    };
+    recon.onerror = (evento) => {
+      const motivo = evento.error || "";
+      limparEstadoVoz(null);
+      if (motivo === "not-allowed" || motivo === "service-not-allowed") {
+        toast("Permita o microfone nas permissões do navegador.", "erro", 4200);
+      } else if (motivo === "no-speech") {
+        toast("Não ouvi nada. Tente de novo.", "erro", 3000);
+      } else {
+        toast("Não consegui ouvir. Tente de novo.", "erro", 3500);
+      }
+    };
+    recon.onend = () => limparEstadoVoz(null);
+    try { recon.start(); } catch (_) {
+      limparEstadoVoz(null);
       toast("Não foi possível iniciar o microfone.", "erro", 3500);
     }
   }
@@ -1398,6 +1455,7 @@
     },
     "repetir-busca": () => executarBusca(buscaEstado.termo, buscaEstado.view || "buscar"),
     "busca-voz": (el) => buscarPorVoz(el.closest("form")),
+    "busca-voz-home": (el) => ouvirNaHome(el),
     "limpar-buscas": () => { estado.buscas = []; salvar(); renderizarVista(); toast("Buscas recentes limpas.", "ok", 1800); },
     "limpar-historico": () => { estado.historico = []; salvar(); renderizarVista(); toast("Histórico limpo.", "ok", 1800); },
     "nova-playlist": () => modalNovaPlaylist(),
