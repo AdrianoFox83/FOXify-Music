@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.adrianofox.foxify",
+      "sha256_cert_fingerprints": [
+        "BC:62:04:28:8D:A8:15:FD:72:40:2D:1F:A5:1B:87:E0:9A:C9:34:B9:7C:26:51:7B:D9:86:48:C8:63:D2:95:35"
+      ]
+    }
+  }
+]
