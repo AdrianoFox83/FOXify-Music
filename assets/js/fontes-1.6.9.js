@@ -777,6 +777,7 @@
         chave: "itunes:" + t.trackId, id: "itunes:" + t.trackId, fonte: "itunes",
         idFonte: String(t.trackId || ""), titulo: t.trackName,
         artista: t.artistName || "Apple Music",
+        album: t.collectionName || "",
         capa: String(t.artworkUrl100 || "")
           .replace("100x100bb", "600x600bb").replace("100x100", "600x600"),
         duracao: Math.round((t.trackTimeMillis || 0) / 1000) || 30,
@@ -885,6 +886,7 @@
       chave: "deezer:" + t.id, id: "deezer:" + t.id, fonte: "deezer",
       idFonte: String(t.id), titulo: t.title,
       artista: (t.artist && t.artist.name) || (dados.artist && dados.artist.name) || "Deezer",
+      album: dados.title || "",
       capa: (dados.cover_xl || dados.cover_big || dados.cover_medium || ""),
       duracao: t.duration || 30, genero: "", licenca: "Deezer", vistas: 0,
       previa: false, duracaoOriginal: t.duration || 0, url: null,
@@ -906,6 +908,7 @@
         chave: "itunes:" + t.trackId, id: "itunes:" + t.trackId, fonte: "itunes",
         idFonte: String(t.trackId || ""), titulo: t.trackName,
         artista: t.artistName || "Apple Music",
+        album: t.collectionName || "",
         capa: String(t.artworkUrl100 || "")
           .replace("100x100bb", "600x600bb").replace("100x100", "600x600"),
         duracao: Math.round((t.trackTimeMillis || 0) / 1000) || 30,
@@ -1048,8 +1051,8 @@
     const url = info.direto
       ? info.url
       : apiUrl("api/proxy?url=" + encodeURIComponent(info.url));
-    if (info.titulo) faixa.titulo = info.titulo;
-    if (info.artista) faixa.artista = info.artista;
+    if (info.titulo && !faixa.titulo) faixa.titulo = info.titulo;
+    if (info.artista && !faixa.artista) faixa.artista = info.artista;
     if (info.duracao && !faixa.duracao) faixa.duracao = info.duracao;
     faixa.viaYoutube = true;
     faixa.previa = false;
@@ -1077,7 +1080,7 @@
 
   async function audioNuvemFaixa(faixa) {
     try {
-      const consulta = `${faixa.titulo || ""} ${faixa.artista || ""} official`.trim();
+      const consulta = `${faixa.titulo || ""} ${faixa.artista || ""} ${faixa.album || ""} official`.trim();
       const achados = await youtubeBuscar(consulta, 5);
       const alvo = escolherYoutube(achados, faixa);
       if (!alvo) return null;
@@ -1099,7 +1102,7 @@
 
   async function tentarYoutubeCompleto(faixa) {
     try {
-      const consulta = `${faixa.titulo || ""} ${faixa.artista || ""} official`.trim();
+      const consulta = `${faixa.titulo || ""} ${faixa.artista || ""} ${faixa.album || ""} official`.trim();
       const resultados = await youtubeBuscar(consulta, 5);
       const alvo = escolherYoutube(resultados, faixa);
       if (!alvo) return null;

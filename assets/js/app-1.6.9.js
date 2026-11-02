@@ -2139,25 +2139,15 @@
     }).join("");
 
     let ultimaFalha = "";
-    let falhasRapidas = [];
     P.aoMudar((st) => {
       renderizarCromo(st);
       if (st.tocando && st.faixa) registrarHistorico(st.faixa);
       if (st.erro && st.faixa && ultimaFalha !== st.faixa.chave) {
         ultimaFalha = st.faixa.chave;
-        toast(st.erro === "toque" ? "Toque no play para liberar o áudio." : `Não foi possível tocar “${st.faixa.titulo}”. Pulando…`, "erro", 3800);
-      }
-      if (st.erro && st.faixa) {
-        const agora = Date.now();
-        falhasRapidas = falhasRapidas.filter((t) => agora - t < 45000);
-        falhasRapidas.push(agora);
-        if (falhasRapidas.length >= 2 && st.fila.length && st.fila.every((t) => t.fonte !== "demo")) {
-          falhasRapidas = [];
-          setTimeout(() => {
-            toast("As fontes de áudio não responderam. Tocando a demonstração local do FOXify.", "info", 5000);
-            P.tocarLista(D.demo.slice(), 0, "FOXify Sessions");
-          }, 1600);
-        }
+        toast(st.erro === "toque"
+          ? "Toque no play para liberar o áudio."
+          : `Não foi possível tocar “${st.faixa.titulo}”. Toque no play ou pule manualmente.`,
+          "erro", 4200);
       }
       if (!st.erro) ultimaFalha = "";
     });
