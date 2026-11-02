@@ -1062,11 +1062,24 @@
     };
   }
 
+  function escolherYoutube(resultados, faixa) {
+    const lista = (resultados || []).filter((r) => r && r.idFonte);
+    if (!lista.length) return null;
+    const alvo = Number(faixa && faixa.duracao) || 0;
+    const nota = (r) => {
+      const d = Number(r.duracao) || 0;
+      let valor = alvo && d ? Math.abs(d - alvo) : 999;
+      if (d && d < 45) valor += 500;
+      return valor;
+    };
+    return lista.slice().sort((a, b) => nota(a) - nota(b))[0];
+  }
+
   async function audioNuvemFaixa(faixa) {
     try {
       const consulta = `${faixa.titulo || ""} ${faixa.artista || ""} official`.trim();
-      const achados = await youtubeBuscar(consulta, 1);
-      const alvo = (achados || []).find((r) => r && r.idFonte);
+      const achados = await youtubeBuscar(consulta, 5);
+      const alvo = escolherYoutube(achados, faixa);
       if (!alvo) return null;
       return await audioNuvemVideo(alvo.idFonte, faixa);
     } catch (_) {
@@ -1088,7 +1101,7 @@
     try {
       const consulta = `${faixa.titulo || ""} ${faixa.artista || ""} official`.trim();
       const resultados = await youtubeBuscar(consulta, 5);
-      const alvo = (resultados || []).find((r) => r && r.idFonte);
+      const alvo = escolherYoutube(resultados, faixa);
       if (!alvo) return null;
       const info = await youtubeAudio(alvo);
       if (!info || !info.url) return null;
@@ -1120,16 +1133,17 @@
       if (naNuvem()) {
         try {
           const achados = await youtubeBuscar(
-            `${faixa.titulo || ""} ${faixa.artista || ""} official`.trim(), 1);
-          if (achados.length) {
+            `${faixa.titulo || ""} ${faixa.artista || ""} official`.trim(), 5);
+          const alvo = escolherYoutube(achados, faixa);
+          if (alvo) {
             faixa.viaYoutube = true;
             faixa.previa = false;
-            if (achados[0].duracao) faixa.duracao = achados[0].duracao;
-            const audio = await audioNuvemVideo(achados[0].idFonte, faixa).catch(() => null);
+            if (alvo.duracao) faixa.duracao = alvo.duracao;
+            const audio = await audioNuvemVideo(alvo.idFonte, faixa).catch(() => null);
             if (audio) return audio;
             return {
               url: null, duracao: faixa.duracao, engine: "youtube",
-              videoId: achados[0].idFonte
+              videoId: alvo.idFonte
             };
           }
         } catch (_) { /* cai na prévia */ }
