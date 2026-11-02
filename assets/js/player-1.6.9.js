@@ -375,12 +375,8 @@
     erro = "nao-tocou";
     emitir();
     falhasSeguidas += 1;
-    const meuToken = token;
-    if (falhasSeguidas <= 2 && fila.length > 1) {
-      setTimeout(() => {
-        if (meuToken === token && erro) proxima(true);
-      }, 1200);
-    }
+    // Não avança sozinho: antes o app pulava várias faixas quando uma fonte
+    // falhava. Agora a faixa fica parada e o usuário decide tentar de novo.
   }
 
   function parar() {

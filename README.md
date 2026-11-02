@@ -16,6 +16,17 @@ cria o servidor na nuvem; depois é só gerar o APK com a URL do Render.
 
 ---
 
+## Novidades da versão 1.6.9
+
+- **YouTube é o motor principal** nas músicas e nos álbuns. Deezer e iTunes vêm
+  **desligados por padrão** e podem ser ligados/desligados nos chips de fontes.
+- A busca de **álbuns** continua usando os catálogos Deezer/iTunes, mas as faixas
+  são reproduzidas pelo YouTube.
+- O player **não pula mais sozinho** para a próxima faixa quando uma fonte falha;
+  ele para na faixa com erro e espera você tentar de novo.
+- O APK usa um **WebView próprio com serviço de mídia em primeiro plano**: o botão
+  **Voltar** minimiza o app, a música continua e a notificação nativa aparece.
+
 ## Novidades da versão 1.6.8
 
 - Corrige **adicionar à playlist**: os botões dentro do modal não são mais confundidos

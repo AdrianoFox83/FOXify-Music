@@ -6,7 +6,7 @@
   const F = window.FOX_FONTES;
   const P = window.FOXPlayer;
   const CHAVE = "foxify.v1";
-  const VERSAO = "1.6.8";
+  const VERSAO = "1.6.9";
 
   const $ = (sel, raiz = document) => raiz.querySelector(sel);
   const $$ = (sel, raiz = document) => Array.from(raiz.querySelectorAll(sel));
@@ -45,7 +45,11 @@
     config: {
       volume: 0.8,
       acento: "azul",
-      fontes: { audius: true, archive: true, jamendo: true },
+      fontes: {
+        youtube: true, deezer: false, itunes: false,
+        audius: false, archive: false, jamendo: false
+      },
+      fontesVersao: 2,
       jamendoId: "",
       youtubeKey: "",
       servidor: "",
@@ -71,6 +75,16 @@
           historico: Array.isArray(bruto.historico) ? bruto.historico : [],
           buscas: Array.isArray(bruto.buscas) ? bruto.buscas : []
         };
+        // Migração: YouTube passa a ser o motor principal; Deezer/iTunes
+        // ficam desligados por padrão para não disputarem a reprodução.
+        if ((bruto.config || {}).fontesVersao !== 2) {
+          estado.config.fontes = {
+            ...estado.config.fontes,
+            youtube: true, deezer: false, itunes: false
+          };
+          estado.config.fontesVersao = 2;
+          setTimeout(() => salvar(), 0);
+        }
       }
     } catch (e) { console.warn("Estado corrompido", e); }
   }
@@ -664,6 +678,7 @@
         <button type="submit" class="btn btn--primario">${ico("busca")} Buscar</button>
       </form>
       ${buscaModosHtml()}
+      ${buscaEstado.modo === "faixas" ? `<p class="nota motor-nota">${ico("play")} Motor principal: <strong>YouTube</strong>. Deezer e iTunes são opcionais — ligue ou desligue nos chips abaixo.</p>` : ""}
       <div class="estado-fontes">
         ${FONTES_ORDEM.map((f) => {
           const ativa = fonteAtiva(f);
@@ -756,6 +771,7 @@
           <span class="resultados__termo">Álbum · ${esc(nomeFonte(a.fonte))}</span>
           <h1>${esc(a.titulo)}</h1>
           <p>${esc(a.artista)}${a.ano ? " · " + esc(a.ano) : ""}${a.total ? " · " + a.total + " faixas" : ""}</p>
+          <p class="nota">Faixas reproduzidas pelo motor do YouTube.</p>
           <div class="album-hero__acoes">
             <button class="btn btn--primario" data-acao="tocar-album" ${d.faixas.length ? "" : "disabled"}>${ico("play")} Tocar álbum</button>
             ${a.permalink ? `<a class="btn btn--fantasma" href="${esc(a.permalink)}" target="_blank" rel="noopener">${ico("externo")} Abrir na fonte</a>` : ""}
@@ -783,7 +799,8 @@
     }
     return `<div class="resultados__topo">
         <div><span class="resultados__termo">Álbuns de “${esc(buscaEstado.termo)}”</span>
-        <span class="resultados__total">${buscaEstado.albuns.length} ${buscaEstado.albuns.length === 1 ? "álbum" : "álbuns"}</span></div>
+        <span class="resultados__total">${buscaEstado.albuns.length} ${buscaEstado.albuns.length === 1 ? "álbum" : "álbuns"}</span>
+        <span class="nota">Catálogo: Deezer/iTunes · áudio pelo YouTube</span></div>
       </div>
       <div class="grade-albuns">${buscaEstado.albuns.map((a) => `<button class="album-card" data-acao="abrir-album" data-chave="${esc(a.chave)}">
         <span class="album-card__arte">${a.capa ? `<img src="${esc(a.capa)}" alt="${esc(a.titulo)}" loading="lazy" onerror="FOX_IMG_ERRO(this)">` : `<span class="album-card__vazio">${ico("nota")}</span>`}</span>
