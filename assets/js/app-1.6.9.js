@@ -2153,17 +2153,35 @@
     }).join("");
 
     let ultimaFalha = "";
+    let timerFalha = null;
     P.aoMudar((st) => {
       renderizarCromo(st);
       if (st.tocando && st.faixa) registrarHistorico(st.faixa);
-      if (st.erro && st.faixa && ultimaFalha !== st.faixa.chave) {
-        ultimaFalha = st.faixa.chave;
-        toast(st.erro === "toque"
-          ? "Toque no play para liberar o áudio."
-          : `Não foi possível tocar “${st.faixa.titulo}”. Toque no play ou pule manualmente.`,
-          "erro", 4200);
+      if (st.tocando) {
+        clearTimeout(timerFalha);
+        timerFalha = null;
       }
-      if (!st.erro) ultimaFalha = "";
+      if (st.erro && st.faixa && !st.tocando && ultimaFalha !== st.faixa.chave) {
+        ultimaFalha = st.faixa.chave;
+        const chave = st.faixa.chave;
+        const tipo = st.erro;
+        clearTimeout(timerFalha);
+        // Só avisa se o erro persistir; o fallback costuma resolver em 1–2 s.
+        timerFalha = setTimeout(() => {
+          const atual = P.estado();
+          if (atual.erro && !atual.tocando && atual.faixa && atual.faixa.chave === chave) {
+            if (tipo === "toque") {
+              toast("Toque no play para liberar o áudio.", "erro", 4200);
+            }
+            // Falhas de fonte são tratadas pelo fallback; não incomodar com toast.
+          }
+        }, 5000);
+      }
+      if (!st.erro) {
+        clearTimeout(timerFalha);
+        timerFalha = null;
+        ultimaFalha = "";
+      }
     });
     P.aoProgresso(atualizarProgresso);
 
