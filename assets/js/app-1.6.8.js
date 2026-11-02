@@ -372,6 +372,21 @@
 
   let ultimoEstado = P.estado();
 
+  function sincronizarMidiaNativa(st) {
+    try {
+      if (!window.FOX_ANDROID) return;
+      if (st && st.faixa) {
+        window.FOX_ANDROID.atualizarMidia(
+          st.faixa.titulo || "FOXify",
+          st.faixa.artista || "",
+          !!st.tocando
+        );
+      } else {
+        window.FOX_ANDROID.pararMidia();
+      }
+    } catch (_) { /* fora do APK WebView */ }
+  }
+
   function renderizarCromo(st) {
     ultimoEstado = st;
     renderizarLateral(st);
@@ -380,6 +395,7 @@
     renderizarSheet(st);
     marcarAtivos(st);
     atualizarProgresso(st);
+    sincronizarMidiaNativa(st);
     document.body.classList.toggle("tocando-agora", !!st.faixa && st.tocando);
   }
 
