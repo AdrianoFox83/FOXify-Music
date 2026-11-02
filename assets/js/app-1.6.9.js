@@ -678,16 +678,23 @@
         <button type="submit" class="btn btn--primario">${ico("busca")} Buscar</button>
       </form>
       ${buscaModosHtml()}
-      ${buscaEstado.modo === "faixas" ? `<p class="nota motor-nota">${ico("play")} Motor principal: <strong>YouTube</strong>. Deezer e iTunes são opcionais — ligue ou desligue nos chips abaixo.</p>` : ""}
-      <div class="estado-fontes">
+      ${buscaEstado.modo === "faixas" ? `<p class="nota motor-nota">${ico("play")} Motor principal: <strong>YouTube</strong>. Deezer e iTunes são opcionais.</p>` : ""}
+      <div class="motores" role="group" aria-label="Motores de música">
+        <span class="motores__rotulo">${ico("onda")} Motores</span>
         ${FONTES_ORDEM.map((f) => {
           const ativa = fonteAtiva(f);
-          return `<button class="fonte-chip ${ativa ? "ativa" : ""}"
-            data-acao="alternar-fonte" data-fonte="${f}" title="${esc(D.fontes[f].desc)}">
-            <span class="ponto" style="--cor:${D.fontes[f].cor}"></span>
-            ${esc(D.fontes[f].nome)}
+          const principal = f === "youtube";
+          return `<button class="motor ${ativa ? "on" : "off"} ${principal ? "motor--principal" : ""}"
+            data-acao="alternar-fonte" data-fonte="${f}" aria-pressed="${ativa}"
+            title="${esc(D.fontes[f].desc)}">
+            <span class="motor__ponto" style="--cor:${D.fontes[f].cor}"></span>
+            <span class="motor__txt"><strong>${esc(D.fontes[f].nome)}</strong>
+              <small>${principal ? (ativa ? "principal" : "desligado") : (ativa ? "desativar" : "ativar")}</small></span>
           </button>`;
         }).join("")}
+        <button class="motor motor--so" data-acao="somente-youtube" title="Desliga Deezer e iTunes">
+          ${ico("play")} <span>Só YouTube</span>
+        </button>
         <span class="estado-rede ${navigator.onLine ? "" : "offline"}">${ico(navigator.onLine ? "wifi" : "wifi-off")} ${navigator.onLine ? "online" : "offline"}</span>
       </div>
 
@@ -1595,6 +1602,13 @@
         const campo = $("#busca-livre-input");
         if (campo) campo.focus();
       }, 350);
+    },
+    "somente-youtube": () => {
+      estado.config.fontes = { ...estado.config.fontes, youtube: true, deezer: false, itunes: false };
+      salvar();
+      toast("Só o YouTube ativo. Deezer e iTunes desligados.", "ok", 2200);
+      renderizarVista();
+      renderizarCromo(ultimoEstado);
     },
     "alternar-fonte": (el) => {
       const f = el.dataset.fonte;

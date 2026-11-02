@@ -1330,3 +1330,42 @@ input[type="range"]:disabled { opacity: 0.45; cursor: default; }
 }
 .motor-nota .icone { width: 14px; height: 14px; color: var(--acento-claro); }
 .motor-nota strong { color: var(--texto); font-weight: 650; }
+
+.motores {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+  margin: 0 0 18px;
+}
+.motores__rotulo {
+  display: inline-flex; align-items: center; gap: 5px;
+  margin-right: 2px; font-size: 10.5px; font-weight: 700;
+  letter-spacing: .08em; text-transform: uppercase; color: var(--texto-fraco);
+}
+.motores__rotulo .icone { width: 14px; height: 14px; color: var(--acento-claro); }
+.motor {
+  display: inline-flex; align-items: center; gap: 8px;
+  min-height: 42px; padding: 6px 10px; border-radius: 12px;
+  color: var(--texto-suave); text-align: left;
+  background: rgba(10, 22, 44, 0.62);
+  border: 1px solid rgba(120, 170, 255, 0.16);
+  transition: background .18s, border-color .18s, color .18s;
+}
+.motor__ponto { width: 8px; height: 8px; flex: none; border-radius: 50%; background: var(--cor); box-shadow: 0 0 10px var(--cor); }
+.motor__txt { display: flex; flex-direction: column; gap: 1px; line-height: 1.05; }
+.motor__txt strong { font-size: 12px; font-weight: 650; color: var(--texto); }
+.motor__txt small { font-size: 9px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--texto-fraco); }
+.motor.on { border-color: rgba(110, 170, 255, 0.42); background: rgba(35, 75, 150, 0.28); }
+.motor.on .motor__txt small { color: #7fd7ff; }
+.motor.off { opacity: .62; }
+.motor.off .motor__ponto { box-shadow: none; filter: grayscale(1); }
+.motor--principal.on { border-color: rgba(255, 90, 120, 0.55); background: rgba(150, 35, 65, 0.2); }
+.motor--so {
+  margin-left: 2px; color: var(--acento-claro); font-size: 11px; font-weight: 650;
+  border-style: dashed;
+}
+.motor--so .icone { width: 14px; height: 14px; }
+@media (max-width: 680px) {
+  .motores { gap: 6px; }
+  .motores__rotulo { width: 100%; margin-bottom: 1px; }
+  .motor { flex: 1 1 30%; min-width: 100px; }
+  .motor--so { flex: 1 1 100%; justify-content: center; }
+}
