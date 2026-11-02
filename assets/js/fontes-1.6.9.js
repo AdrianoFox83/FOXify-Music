@@ -1031,6 +1031,8 @@
         "&t=" + Date.now()),
       duracao: faixa.duracao,
       engine: "audio",
+      videoId: faixa.idFonte,
+      fallbackVideoId: faixa.idFonte,
       titulo: faixa.titulo,
       artista: faixa.artista
     };
@@ -1060,6 +1062,8 @@
       url,
       duracao: info.duracao || faixa.duracao,
       engine: "audio",
+      videoId,
+      fallbackVideoId: videoId,
       titulo: faixa.titulo,
       artista: faixa.artista
     };
@@ -1111,7 +1115,7 @@
       if (alvo.duracao) faixa.duracao = alvo.duracao;
       faixa.viaYoutube = true;
       faixa.previa = false;
-      return { url: info.url, duracao: faixa.duracao || alvo.duracao, engine: "audio" };
+      return { url: info.url, duracao: faixa.duracao || alvo.duracao, engine: "audio", videoId: alvo.idFonte, fallbackVideoId: alvo.idFonte };
     } catch (_) {
       return null;
     }
