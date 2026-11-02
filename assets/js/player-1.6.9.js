@@ -588,7 +588,19 @@
     a.addEventListener("loadedmetadata", () => { if (a !== audio || motor !== "audio") return; carregando = false; emitir(); emitirProgresso(true); });
     a.addEventListener("canplay", () => { if (a !== audio || motor !== "audio") return; if (carregando) { carregando = false; emitir(); } });
     a.addEventListener("timeupdate", () => { if (a !== audio || motor !== "audio") return; emitirProgresso(false); atualizarPosicao(); });
-    a.addEventListener("ended", () => { if (a !== audio || motor !== "audio") return; proxima(false); });
+    a.addEventListener("ended", () => {
+      if (a !== audio || motor !== "audio") return;
+      const esperado = Number((fila[indice] || {}).duracao) || 0;
+      const real = Number(a.duration) || 0;
+      if (esperado > 60 && real > 0 && real < esperado * 0.65) {
+        // Um clipe curto/errado não deve fazer a fila pular sozinha.
+        erro = "nao-tocou";
+        carregando = false;
+        emitir();
+        return;
+      }
+      proxima(false);
+    });
     a.addEventListener("error", () => {
       if (a !== audio || motor !== "audio" || !a.src) return;
       if (carregando || !a.paused) falhar(a.error || new Error("Erro de mídia"), token);
