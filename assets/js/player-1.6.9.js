@@ -16,6 +16,7 @@
   let token = 0;
   let falhasSeguidas = 0;
   let urlAtual = null;
+  let fallbackVideoId = null;
   let vigia = null;
   let motor = "audio"; // audio | youtube
   let yt = null;
@@ -265,6 +266,7 @@
     carregando = true;
     erro = null;
     urlAtual = null;
+    fallbackVideoId = null;
     limparVigia();
     pararTimerYt();
     if (motor === "youtube") {
@@ -298,8 +300,10 @@
       if (meuToken !== token) return;
       if (info.duracao && !faixa.duracao) faixa.duracao = info.duracao;
       if (info.engine === "youtube") {
+        fallbackVideoId = null;
         return tocarYoutube(faixa, info, autoplay, meuToken);
       }
+      fallbackVideoId = info.fallbackVideoId || info.videoId || null;
       motor = "audio";
       urlAtual = info.url;
       // O elemento já foi criado/destravado no clique; só troca a fonte.
@@ -364,6 +368,16 @@
 
   async function falhar(e, paraToken) {
     if (paraToken !== undefined && paraToken !== token) return;
+    if (motor === "audio" && fallbackVideoId && fila[indice]) {
+      const videoId = fallbackVideoId;
+      fallbackVideoId = null;
+      try { if (audio) audio.pause(); } catch (_) {}
+      limparVigia();
+      carregando = true;
+      try { tocarYoutube(fila[indice], { videoId, duracao: fila[indice].duracao }, true, token); }
+      catch (_) { /* se o player também falhar, cai no erro abaixo */ }
+      return;
+    }
     console.warn("[FOXify] falha ao tocar:", e);
     limparVigia();
     pararTimerYt();
@@ -406,7 +420,7 @@
     audio.pause();
     audio.removeAttribute("src");
     urlAtual = null;
-    carregando = false;
+    fallbackVideoId = null;
     erro = null;
     midiaSessao(faixa);
     emitir();
